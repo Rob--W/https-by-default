@@ -45,7 +45,11 @@ CustomURIFixup.prototype = {
   },
 
   createFixupURI: function(aURIText, aFixupFlags, aPostData) {
-    let fixupInfo = this.getFixupURIInfo(aURIText, aFixupFlags, aPostData);
+    let fixupInfo;
+    try {
+      fixupInfo = this.getFixupURIInfo(aURIText, aFixupFlags, aPostData);
+    } catch (e) {
+    }
     if (fixupInfo) {
       return fixupInfo.preferredURI;
     }
