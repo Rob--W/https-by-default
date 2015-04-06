@@ -1,0 +1,3 @@
+# Linguist ignores bootstrap.js by default, so mark it as a non-vendor file.
+# https://github.com/github/linguist/blob/53c3cb3/lib/linguist/vendor.yml#L46
+bootstrap.js linguist-vendored=false
