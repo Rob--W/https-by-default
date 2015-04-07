@@ -92,10 +92,10 @@ function ComponentFactory(Component) {
     },
 
     // nsIFactory
-    createInstance: function ComponentFactory_createInstance(aOuter) {
+    createInstance: function ComponentFactory_createInstance(aOuter, iid) {
       if (aOuter)
         throw Cr.NS_ERROR_NO_AGGREGATION;
-      return new Component();
+      return new Component().QueryInterface(iid);
     },
 
     lockFactory: function ComponentFactory_lockFactory(aDoLock) {
