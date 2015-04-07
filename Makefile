@@ -1,6 +1,6 @@
 FFFILES  = install.rdf
-FFFILES += bootstrap.js
 FFFILES += icon.png
+FFFILES += components/urifixup.js
 
 firefox/https-by-default.xpi: $(addprefix firefox/,$(FFFILES))
 	cd firefox && zip https-by-default.xpi $(FFFILES)

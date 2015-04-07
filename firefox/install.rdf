@@ -18,7 +18,6 @@
 
     <em:name>HTTPS by default</em:name>
     
-    <em:bootstrap>true</em:bootstrap>
     <em:description>Autocomplete to https instead of http when you type a website in the location bar.</em:description>
     <em:creator>Rob Wu &lt;rob@robwu.nl&gt; (https://robwu.nl)</em:creator>
 
