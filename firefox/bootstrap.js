@@ -109,6 +109,11 @@ function ComponentFactory(Component) {
       var registrar = Cm.QueryInterface(Ci.nsIComponentRegistrar);
       // Save original CID for use in unregister().
       originalCID = registrar.contractIDToCID(Component.prototype.contractID);
+      if (registrar.isCIDRegistered(Component.prototype.classID)) {
+        console.warn('Not registering ' + Component.prototype.classID +
+            ' because it was already registered.');
+        return;
+      }
       registrar.registerFactory(
           Component.prototype.classID,
           Component.prototype.classDescription,
@@ -133,6 +138,7 @@ function ComponentFactory(Component) {
             'Original implementation of ' + Component.prototype.contractID,
             Component.prototype.contractID,
             null);
+        originalCID = null;
       } else {
         console.warn('Cannot register original factory for ' +
             Component.prototype.contractID + ' because it was not saved.');
