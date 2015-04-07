@@ -5,15 +5,15 @@
 
 /* exported startup, install, shutdown, uninstall */
 'use strict';
-const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cm = Components.manager;
 const Cr = Components.results;
 const NS_URIFIXUP_CONTRACTID = '@mozilla.org/docshell/urifixup;1';
 
-// This is almost a const. register() assigns an instance of the default
-// implementation of NS_URIFIXUP_CONTRACTID to DefaultURIFixup.
-let DefaultURIFixup;
+// The default fixup implementation, provided by nsDefaultURIFixup.
+const DefaultURIFixup =
+  Components.classesByID['{214c48a0-b57f-11d4-959c-0020183bf181}']
+  .getService(Ci.nsIURIFixup);
 
 function CustomURIFixup() {
 }
@@ -153,17 +153,6 @@ let factory;
 // https://developer.mozilla.org/en-US/docs/Extensions/bootstrap.js
 
 function startup() {
-  try {
-    DefaultURIFixup = Cc[NS_URIFIXUP_CONTRACTID].getService(Ci.nsIURIFixup);
-  } catch (e) {
-    // This should never happen. It could happen when something (e.g. another
-    // addon) unregisters the default factory for NS_URIFIXUP_CONTRACTID.
-    DefaultURIFixup =
-      Components.classesByID['{214c48a0-b57f-11d4-959c-0020183bf181}']
-      .getService(Ci.nsIURIFixup);
-    console.warn('Cannot find the default implementation of nsIURIFixup. ' +
-        'Fell back to the class by CID. ');
-  }
   factory = new ComponentFactory(CustomURIFixup);
   factory.register();
 }
