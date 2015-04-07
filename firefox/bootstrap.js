@@ -120,14 +120,22 @@ function ComponentFactory(Component) {
       var registrar = Cm.QueryInterface(Ci.nsIComponentRegistrar);
       if (registrar.isCIDRegistered(Component.prototype.classID)) {
         registrar.unregisterFactory(Component.prototype.classID, this);
+      } else {
+        // This should not happen. It only happens when register() failed or
+        // when something else (e.g. another addon) unregistered the factory.
+        console.warn('Cannot unregister ' + Component.prototype.classID +
+            ' because it was not registered!');
       }
       // Restore original factory.
       if (originalCID) {
         registrar.registerFactory(
             originalCID,
-            'Original nsIURIFixup implementation',
+            'Original implementation of ' + Component.prototype.contractID,
             Component.prototype.contractID,
             null);
+      } else {
+        console.warn('Cannot register original factory for ' +
+            Component.prototype.contractID + ' because it was not saved.');
       }
     },
   };
