@@ -9,10 +9,10 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cm = Components.manager;
 const Cr = Components.results;
-const NS_DOCSHELL_URIFIXUP = '@mozilla.org/docshell/urifixup;1';
+const NS_URIFIXUP_CONTRACTID = '@mozilla.org/docshell/urifixup;1';
 
 // This is almost a const. register() assigns an instance of the default
-// implementation of NS_DOCSHELL_URIFIXUP to DefaultURIFixup.
+// implementation of NS_URIFIXUP_CONTRACTID to DefaultURIFixup.
 let DefaultURIFixup;
 
 function CustomURIFixup() {
@@ -22,7 +22,7 @@ CustomURIFixup.prototype = {
   // Metadata used by factory.
   classID: Components.ID('4262ff38-28eb-4845-b8f0-01262fdb72d5'),
   classDescription: 'Add https instead of http if scheme is not specified.',
-  contractID: NS_DOCSHELL_URIFIXUP,
+  contractID: NS_URIFIXUP_CONTRACTID,
 
   // nsISupports
   QueryInterface: function CustomURIFixup_QueryInterface(iid) {
@@ -154,10 +154,10 @@ let factory;
 
 function startup() {
   try {
-    DefaultURIFixup = Cc[NS_DOCSHELL_URIFIXUP].getService(Ci.nsIURIFixup);
+    DefaultURIFixup = Cc[NS_URIFIXUP_CONTRACTID].getService(Ci.nsIURIFixup);
   } catch (e) {
     // This should never happen. It could happen when something (e.g. another
-    // addon) unregisters the default factory for NS_DOCSHELL_URIFIXUP.
+    // addon) unregisters the default factory for NS_URIFIXUP_CONTRACTID.
     DefaultURIFixup =
       Components.classesByID['{214c48a0-b57f-11d4-959c-0020183bf181}']
       .getService(Ci.nsIURIFixup);
