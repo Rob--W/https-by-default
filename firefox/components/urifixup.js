@@ -1,12 +1,11 @@
 /**
  * Copyright (c) 2015 Rob Wu <rob@robwu.nl> (https://robwu.nl)
  */
-/* globals Components, APP_SHUTDOWN, console */
+/* globals Components, console */
+/* exported NSGetFactory */
 
-/* exported startup, install, shutdown, uninstall */
 'use strict';
 const Ci = Components.interfaces;
-const Cm = Components.manager;
 const Cr = Components.results;
 const NS_URIFIXUP_CONTRACTID = '@mozilla.org/docshell/urifixup;1';
 
@@ -78,92 +77,31 @@ CustomURIFixup.prototype = {
   },
 };
 
+const factory = {
+  // nsISupports
+  QueryInterface: function ComponentFactory_QueryInterface(iid) {
+    if (Ci.nsISupports.equals(iid))
+      return this;
+    if (Ci.nsIFactory.equals(iid))
+      return this;
+    throw Cr.NS_ERROR_NO_INTERFACE;
+  },
 
-function ComponentFactory(Component) {
-  let originalCID;
-  return {
-    // nsISupports
-    QueryInterface: function ComponentFactory_QueryInterface(iid) {
-      if (Ci.nsISupports.equals(iid))
-        return this;
-      if (Ci.nsIFactory.equals(iid))
-        return this;
-      throw Cr.NS_ERROR_NO_INTERFACE;
-    },
+  // nsIFactory
+  createInstance: function ComponentFactory_createInstance(aOuter, iid) {
+    if (aOuter)
+      throw Cr.NS_ERROR_NO_AGGREGATION;
+    return new CustomURIFixup().QueryInterface(iid);
+  },
 
-    // nsIFactory
-    createInstance: function ComponentFactory_createInstance(aOuter, iid) {
-      if (aOuter)
-        throw Cr.NS_ERROR_NO_AGGREGATION;
-      return new Component().QueryInterface(iid);
-    },
+  lockFactory: function ComponentFactory_lockFactory(aDoLock) {
+    throw Cr.NS_ERROR_NOT_IMPLEMENTED;
+  },
+};
 
-    lockFactory: function ComponentFactory_lockFactory(aDoLock) {
-      throw Cr.NS_ERROR_NOT_IMPLEMENTED;
-    },
-
-    // Component registration logic (no particular interface).
-    register: function ComponentFactory_register() {
-      // Note: Use Cm.QI() instead of Cm.nsIComponentRegistrar because of
-      // https://bugzilla.mozilla.org/show_bug.cgi?id=1141070.
-      var registrar = Cm.QueryInterface(Ci.nsIComponentRegistrar);
-      // Save original CID for use in unregister().
-      originalCID = registrar.contractIDToCID(Component.prototype.contractID);
-      if (registrar.isCIDRegistered(Component.prototype.classID)) {
-        console.warn('Not registering ' + Component.prototype.classID +
-            ' because it was already registered.');
-        return;
-      }
-      registrar.registerFactory(
-          Component.prototype.classID,
-          Component.prototype.classDescription,
-          Component.prototype.contractID,
-          this);
-    },
-
-    unregister: function ComponentFactory_unregister() {
-      var registrar = Cm.QueryInterface(Ci.nsIComponentRegistrar);
-      if (registrar.isCIDRegistered(Component.prototype.classID)) {
-        registrar.unregisterFactory(Component.prototype.classID, this);
-      } else {
-        // This should not happen. It only happens when register() failed or
-        // when something else (e.g. another addon) unregistered the factory.
-        console.warn('Cannot unregister ' + Component.prototype.classID +
-            ' because it was not registered!');
-      }
-      // Restore original factory.
-      if (originalCID) {
-        registrar.registerFactory(
-            originalCID,
-            'Original implementation of ' + Component.prototype.contractID,
-            Component.prototype.contractID,
-            null);
-        originalCID = null;
-      } else {
-        console.warn('Cannot register original factory for ' +
-            Component.prototype.contractID + ' because it was not saved.');
-      }
-    },
-  };
+function NSGetFactory(cid) {
+  if (CustomURIFixup.prototype.classID.toString() === cid.toString()) {
+    return factory;
+  }
+  throw Cr.NS_ERROR_FACTORY_NOT_REGISTERED;
 }
-
-let factory;
-
-// Bootstrap hooks.
-// https://developer.mozilla.org/en-US/docs/Extensions/bootstrap.js
-
-function startup() {
-  factory = new ComponentFactory(CustomURIFixup);
-  factory.register();
-}
-
-function install() {}
-
-function shutdown(data, reason) {
-  // Don't bother restoring the old state upon shutdown of the browser.
-  if (reason === APP_SHUTDOWN)
-    return;
-  factory.unregister();
-}
-
-function uninstall() {}

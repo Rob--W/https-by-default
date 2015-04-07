@@ -1,5 +1,6 @@
 FFFILES  = install.rdf
 FFFILES += icon.png
+FFFILES += chrome.manifest
 FFFILES += components/urifixup.js
 
 firefox/https-by-default.xpi: $(addprefix firefox/,$(FFFILES))
