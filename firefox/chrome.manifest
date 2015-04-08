@@ -1,2 +1,6 @@
 component {4262ff38-28eb-4845-b8f0-01262fdb72d5} components/urifixup.js
 contract @mozilla.org/docshell/urifixup;1 {4262ff38-28eb-4845-b8f0-01262fdb72d5}
+
+# Initialize up the component as soon as possible, because nsIURIFixup has to be
+# replaced before nsDocShell has been constructed.
+category profile-after-change TriggerURIFixupRegistration @mozilla.org/docshell/urifixup;1

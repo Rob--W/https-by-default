@@ -27,9 +27,23 @@ CustomURIFixup.prototype = {
   QueryInterface: function CustomURIFixup_QueryInterface(iid) {
     if (Ci.nsISupports.equals(iid))
       return this;
+    if (Ci.nsIObserver.equals(iid))
+      return this;
     if (Ci.nsIURIFixup.equals(iid))
       return this;
     throw Cr.NS_ERROR_NO_INTERFACE;
+  },
+
+  // nsIObserver
+  observe: function(aSubject, aTopic, aData) {
+    // This observer is triggered by nsXREDirProvider::DoStartup, via
+    // NS_CreateServicesFromCategory.
+    // aSubject == null
+    // aTopic == 'profile-after-change'
+    // aData == ''
+    // We do not handle the notification, because the only purpose of adding the
+    // module to the profile-after-change category is to get the module to
+    // initialize before nsDocShell is constructed.
   },
 
   // nsIURIFixup
