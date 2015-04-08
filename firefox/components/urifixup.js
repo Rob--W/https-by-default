@@ -60,7 +60,9 @@ CustomURIFixup.prototype = {
   createFixupURI: function(aURIText, aFixupFlags, aPostData) {
     let fixupInfo;
     try {
-      fixupInfo = this.getFixupURIInfo(aURIText, aFixupFlags, aPostData);
+      fixupInfo = aPostData ?
+        this.getFixupURIInfo(aURIText, aFixupFlags, aPostData) :
+        this.getFixupURIInfo(aURIText, aFixupFlags);
     } catch (e) {
     }
     if (fixupInfo) {
@@ -70,8 +72,9 @@ CustomURIFixup.prototype = {
   },
 
   getFixupURIInfo: function(aURIText, aFixupFlags, aPostData) {
-    let fixupInfo =
-      DefaultURIFixup.getFixupURIInfo(aURIText, aFixupFlags, aPostData);
+    let fixupInfo = aPostData ?
+      this.DefaultURIFixup.getFixupURIInfo(aURIText, aFixupFlags, aPostData) :
+      this.DefaultURIFixup.getFixupURIInfo(aURIText, aFixupFlags);
     // If the protocol was fixed-up to http, AND
     // the original URI did not start with a RFC 2396-compliant scheme,
     // then assume that the URI was fixed-up by prefixing the default protocol,
