@@ -9,11 +9,6 @@ const Ci = Components.interfaces;
 const Cr = Components.results;
 const NS_URIFIXUP_CONTRACTID = '@mozilla.org/docshell/urifixup;1';
 
-// The default fixup implementation, provided by nsDefaultURIFixup.
-const DefaultURIFixup =
-  Components.classesByID['{214c48a0-b57f-11d4-959c-0020183bf181}']
-  .getService(Ci.nsIURIFixup);
-
 function CustomURIFixup() {
 }
 
@@ -54,7 +49,7 @@ CustomURIFixup.prototype = {
   FIXUP_FLAG_FIX_SCHEME_TYPOS: 8,
 
   createExposableURI: function(aURI) {
-    return DefaultURIFixup.createExposableURI(aURI);
+    return this.DefaultURIFixup.createExposableURI(aURI);
   },
 
   createFixupURI: function(aURIText, aFixupFlags, aPostData) {
@@ -90,7 +85,17 @@ CustomURIFixup.prototype = {
   },
 
   keywordToURI: function(aKeyword, aPostData) {
-    return DefaultURIFixup.keywordToURI(aKeyword, aPostData);
+    return this.DefaultURIFixup.keywordToURI(aKeyword, aPostData);
+  },
+
+  // Lazy getter
+  get DefaultURIFixup() { // Lazy getter.
+    // The default fixup implementation, provided by nsDefaultURIFixup.
+    const DefaultURIFixup =
+      Components.classesByID['{214c48a0-b57f-11d4-959c-0020183bf181}']
+      .getService(Ci.nsIURIFixup);
+    Object.defineProperty(this, 'DefaultURIFixup', { value: DefaultURIFixup });
+    return DefaultURIFixup;
   },
 };
 
