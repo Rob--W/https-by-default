@@ -1,13 +1,19 @@
 /**
  * Copyright (c) 2015 Rob Wu <rob@robwu.nl> (https://robwu.nl)
  */
-/* globals Components, console */
-/* exported NSGetFactory */
+/* globals Components, Services, __URI__ */
+/* exported EXPORTED_SYMBOLS, NSGetFactory */
 
 'use strict';
+const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cr = Components.results;
+const Cu = Components.utils;
 const NS_URIFIXUP_CONTRACTID = '@mozilla.org/docshell/urifixup;1';
+const EXPORTED_SYMBOLS = [];
+
+Cu.import('resource://gre/modules/Services.jsm');
+
 
 function CustomURIFixup() {
 }
@@ -39,6 +45,16 @@ CustomURIFixup.prototype = {
     // We do not handle the notification, because the only purpose of adding the
     // module to the profile-after-change category is to get the module to
     // initialize before nsDocShell is constructed.
+    if (aTopic !== 'profile-after-change') {
+      return;
+    }
+    let globalMM = Cc['@mozilla.org/globalmessagemanager;1']
+      .getService(Ci.nsIMessageListenerManager);
+    // Import the current module in content processes.
+    // Yeah, this sucks, but there is no other way to work around
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=596880
+    globalMM.loadFrameScript(
+        'data:,Components.utils.import("' + __URI__ + '");', true);
   },
 
   // nsIURIFixup
@@ -120,6 +136,20 @@ const factory = {
     throw Cr.NS_ERROR_NOT_IMPLEMENTED;
   },
 };
+
+if (Services.appinfo.processType === Services.appinfo.PROCESS_TYPE_CONTENT) {
+  let registrar = Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
+  if (registrar.isCIDRegistered(CustomURIFixup.prototype.classID)) {
+    Cu.reportError('Not registering ' + CustomURIFixup.prototype.classID +
+        ' because it was already registered.');
+  } else {
+    registrar.registerFactory(
+        CustomURIFixup.prototype.classID,
+        CustomURIFixup.prototype.classDescription,
+        CustomURIFixup.prototype.contractID,
+        factory);
+  }
+}
 
 function NSGetFactory(cid) {
   if (CustomURIFixup.prototype.classID.toString() === cid.toString()) {
