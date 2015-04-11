@@ -48,6 +48,14 @@ CustomURIFixup.prototype = {
     if (aTopic !== 'profile-after-change') {
       return;
     }
+
+    if (Ci.nsIProcessScriptLoader) {
+      let ppmm = Cc['@mozilla.org/parentprocessmessagemanager;1']
+        .getService(Ci.nsIMessageBroadcaster)
+        .QueryInterface(Ci.nsIProcessScriptLoader);
+      ppmm.loadProcessScript(__URI__, true);
+      return;
+    }
     let globalMM = Cc['@mozilla.org/globalmessagemanager;1']
       .getService(Ci.nsIMessageListenerManager);
     // Import the current module in content processes.
