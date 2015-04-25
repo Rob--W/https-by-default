@@ -48,6 +48,10 @@ cd chromium/src   # this is the location of Chromium's git repository
 git apply https-by-default.patch   # the .patch file from this repo at chrome/.
 ```
 
+After applying this patch, https will be used by default for navigations that
+are triggered from the omnibox, and the "http://" prefix will not be removed
+from the omnibox.
+
 
 # Roadmap
 
