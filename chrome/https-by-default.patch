@@ -1,0 +1,37 @@
+diff --git a/chrome/browser/ui/toolbar/toolbar_model_impl.cc b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
+index 25f63ae..8cd06e7 100644
+--- a/chrome/browser/ui/toolbar/toolbar_model_impl.cc
++++ b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
+@@ -210,7 +210,8 @@ base::string16 ToolbarModelImpl::GetFormattedURL(size_t* prefix_end) const {
+   // and pastes it into another program, that program may think the URL ends at
+   // the space.
+   return AutocompleteInput::FormattedStringWithEquivalentMeaning(
+-      url, net::FormatUrl(url, languages, net::kFormatUrlOmitAll,
++      url, net::FormatUrl(url, languages,
++                          net::kFormatUrlOmitAll & ~net::kFormatUrlOmitHTTP,
+                           net::UnescapeRule::NORMAL, NULL, prefix_end, NULL),
+       ChromeAutocompleteSchemeClassifier(profile));
+ }
+diff --git a/components/omnibox/autocomplete_input.cc b/components/omnibox/autocomplete_input.cc
+index 2c6982b..4e541c8 100644
+--- a/components/omnibox/autocomplete_input.cc
++++ b/components/omnibox/autocomplete_input.cc
+@@ -252,6 +252,18 @@ metrics::OmniboxInputType::Type AutocompleteInput::Parse(
+   if (!canonicalized_url->has_host())
+     return metrics::OmniboxInputType::QUERY;
+ 
++  if (!parts->scheme.is_nonempty() &&
++      LowerCaseEqualsASCII(parsed_scheme_utf8, url::kHttpScheme)) {
++    // Scheme was not specified. url_fixer::FixupURL automatically adds http:,
++    // but we want to default to https instead.
++    if (scheme)
++      *scheme = base::ASCIIToUTF16(url::kHttpsScheme);
++    url::Replacements<char> replacements;
++    replacements.SetScheme(url::kHttpsScheme,
++                           url::Component(0, strlen(url::kHttpsScheme)));
++    *canonicalized_url = canonicalized_url->ReplaceComponents(replacements);
++  }
++
+   // Determine the host family.  We get this information by (re-)canonicalizing
+   // the already-canonicalized host rather than using the user's original input,
+   // in case fixup affected the result here (e.g. an input that looks like an
