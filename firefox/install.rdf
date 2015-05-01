@@ -18,6 +18,7 @@
 
     <em:name>HTTPS by default</em:name>
     
+    <em:bootstrap>true</em:bootstrap>
     <em:description>Request websites over secure https by default from the location bar instead of insecure http.</em:description>
     <em:creator>Rob Wu &lt;rob@robwu.nl&gt; (https://robwu.nl)</em:creator>
 
