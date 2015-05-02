@@ -36,10 +36,7 @@ function maybeFixupURL(url) {
     // The URL already has a scheme. Don't call fixup.
     return url;
   }
-  let flags =
-    Ci.nsIWebNavigation.LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP |
-    Ci.nsIWebNavigation.LOAD_FLAGS_FIXUP_SCHEME_TYPOS;
-
+  let flags = Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
   let fixupInfo;
 
   try {
