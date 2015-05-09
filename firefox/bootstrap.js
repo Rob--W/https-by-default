@@ -18,12 +18,18 @@ const sURIFixup =
 // Some pseudo-random unique value, used to label monkey-patched methods.
 const ADDON_SESSION_TAG = 'https by default ' + Math.random().toString(36);
 
+// Whether we are on Firefox for Android.
+let isFennec = '{aa3c5121-dab2-40e2-81ca-7ea25febc110}' ===
+  Cc['@mozilla.org/xre/app-info;1'].getService(Ci.nsIXULAppInfo).ID;
+
 // Whether the addon is still active. When the add-on unloads, it attempts to
 // restore the monkey-patched openLinkIn method. When this is not possible, e.g.
 // because another addon has overwritten the method, then this value is used to
 // disable the monkey-patched behavior.
 let isEnabled = false;
 
+
+const patchTabBrowserWindow = isFennec ? patchFennecWindow : patchFirefoxWindow;
 
 /**
  * @param {string} url - whatever the user typed in the location bar.
@@ -60,11 +66,12 @@ function maybeFixupURL(url) {
 }
 
 /**
+ * FOR FIREFOX DESKTOP.
  * Monkey-patch the openLinkIn method if the given window is a browser window.
  *
  * @param {nsIDOMWindow} window - browser window.
  */
-function patchTabBrowserWindow(window) {
+function patchFirefoxWindow(window) {
   const openLinkIn = window.openLinkIn;
   if (!openLinkIn) {
     let windowtype = window.document.documentElement.getAttribute('windowtype');
@@ -92,6 +99,42 @@ function patchTabBrowserWindow(window) {
     return openLinkIn.apply(this, arguments);
   };
   window.openLinkIn[ADDON_SESSION_TAG] = openLinkIn;
+}
+
+/**
+ * FOR FIREFOX FOR ANDROID (Fennec).
+ * Monkey-patch the BrowserApp.loadURI method.
+ */
+function patchFennecWindow(window) {
+  // This function has a structure similar to patchTabBrowserWindow.
+  const loadURI = window.BrowserApp && window.BrowserApp.loadURI;
+  if (!loadURI) {
+    let windowtype = window.document.documentElement.getAttribute('windowtype');
+    if (windowtype === 'navigator:browser') {
+      if (window.BrowserApp) {
+        console.warn('BrowserApp.loadURI method not found in tabbrowser!');
+      } else {
+        console.warn('BrowserApp object not found in mobile tabbrowser!');
+      }
+    }
+    return;
+  }
+
+  if (loadURI.length !== 3) {
+    console.warn('Function signature of BrowserApp.loadURI has changed!');
+  }
+
+  function BrowserApp_loadURI_withHttpsFixup(aURI, aBrowser, aParams) {
+    // These parameters are set in mobile/android/chrome/content/browser.js,
+    // in the observe method, case "Tab:Load" (which in turn is triggered by
+    // loadUrl(String,String,int,int) in mobile/android/base/Tabs.java).
+    if (isEnabled && aParams && aParams.userRequested && !aParams.isSearch) {
+      arguments[0] = maybeFixupURL(aURI);
+    }
+    return loadURI.apply(this, arguments);
+  }
+  BrowserApp_loadURI_withHttpsFixup[ADDON_SESSION_TAG] = loadURI;
+  window.BrowserApp.loadURI = BrowserApp_loadURI_withHttpsFixup;
 }
 
 /**
@@ -169,11 +212,19 @@ function shutdown(data, reason) {
 
   forEachBrowserWindow(function undoPatch(window) {
     window.removeEventListener('DOMContentLoaded', onDOMContentLoaded);
-    let openLinkIn = window.openLinkIn;
+
     // Restore original method if possible. If not possible, isEnabled=false
     // ensures that the functionality is disabled.
-    if (openLinkIn && openLinkIn[ADDON_SESSION_TAG]) {
-      window.openLinkIn = openLinkIn[ADDON_SESSION_TAG];
+    if (isFennec) {
+      let loadURI = window.BrowserApp && window.BrowserApp.loadURI;
+      if (loadURI && loadURI[ADDON_SESSION_TAG]) {
+        window.BrowserApp.loadURI = loadURI[ADDON_SESSION_TAG];
+      }
+    } else { // Desktop Firefox
+      let openLinkIn = window.openLinkIn;
+      if (openLinkIn && openLinkIn[ADDON_SESSION_TAG]) {
+        window.openLinkIn = openLinkIn[ADDON_SESSION_TAG];
+      }
     }
   });
 }
