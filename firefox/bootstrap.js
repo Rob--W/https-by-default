@@ -32,11 +32,13 @@ let isEnabled = false;
  *   http. Otherwise the original url is returned.
  */
 function maybeFixupURL(url) {
+  url = url.trim().replace(/[\r\n]/g, '');
   if (/^[a-z][a-z0-9+\-.]*:/i.test(url)) {
     // The URL already has a scheme. Don't call fixup.
     return url;
   }
-  let flags = Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
+  let flags = Ci.nsIURIFixup.FIXUP_FLAG_REQUIRE_WHITELISTED_HOST |
+    Ci.nsIURIFixup.FIXUP_FLAG_ALLOW_KEYWORD_LOOKUP;
   let fixupInfo;
 
   try {
