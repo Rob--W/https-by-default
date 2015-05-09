@@ -31,10 +31,6 @@ to enable https by default in Firefox.
 Visit `about:config` and set `browser.urlbar.trimURLs` to `false` to not hide
 the "http://" prefix by default.
 
-NOTE: This add-on does not work yet with multi-process Firefox (e10s) because
-add-ons cannot register components in the content process in a timely fashion:
-https://bugzilla.mozilla.org/show_bug.cgi?id=1131065
-
 
 # Chrome / Chromium
 
