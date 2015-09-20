@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/ui/toolbar/toolbar_model_impl.cc b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
-index 25f63ae..8cd06e7 100644
+index 6a17942..9cdf49a 100644
 --- a/chrome/browser/ui/toolbar/toolbar_model_impl.cc
 +++ b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
-@@ -210,7 +210,8 @@ base::string16 ToolbarModelImpl::GetFormattedURL(size_t* prefix_end) const {
+@@ -68,7 +68,8 @@ base::string16 ToolbarModelImpl::GetFormattedURL(size_t* prefix_end) const {
    // and pastes it into another program, that program may think the URL ends at
    // the space.
    return AutocompleteInput::FormattedStringWithEquivalentMeaning(
@@ -12,16 +12,16 @@ index 25f63ae..8cd06e7 100644
                            net::UnescapeRule::NORMAL, NULL, prefix_end, NULL),
        ChromeAutocompleteSchemeClassifier(profile));
  }
-diff --git a/components/omnibox/autocomplete_input.cc b/components/omnibox/autocomplete_input.cc
-index 2c6982b..4e541c8 100644
---- a/components/omnibox/autocomplete_input.cc
-+++ b/components/omnibox/autocomplete_input.cc
-@@ -252,6 +252,18 @@ metrics::OmniboxInputType::Type AutocompleteInput::Parse(
+diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
+index d254b61..ab719cb 100644
+--- a/components/omnibox/browser/autocomplete_input.cc
++++ b/components/omnibox/browser/autocomplete_input.cc
+@@ -287,6 +287,18 @@ metrics::OmniboxInputType::Type AutocompleteInput::Parse(
    if (!canonicalized_url->has_host())
      return metrics::OmniboxInputType::QUERY;
  
 +  if (!parts->scheme.is_nonempty() &&
-+      LowerCaseEqualsASCII(parsed_scheme_utf8, url::kHttpScheme)) {
++      base::LowerCaseEqualsASCII(parsed_scheme_utf8, url::kHttpScheme)) {
 +    // Scheme was not specified. url_fixer::FixupURL automatically adds http:,
 +    // but we want to default to https instead.
 +    if (scheme)
