@@ -1,17 +1,17 @@
-diff --git a/chrome/browser/ui/toolbar/toolbar_model_impl.cc b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
+diff --git a/components/toolbar/toolbar_model_impl.cc b/components/toolbar/toolbar_model_impl.cc
 index 0cefbc6b..2865d67 100644
---- a/chrome/browser/ui/toolbar/toolbar_model_impl.cc
-+++ b/chrome/browser/ui/toolbar/toolbar_model_impl.cc
-@@ -70,7 +70,8 @@ base::string16 ToolbarModelImpl::GetFormattedURL(size_t* prefix_end) const {
+--- a/components/toolbar/toolbar_model_impl.cc
++++ b/components/toolbar/toolbar_model_impl.cc
+@@ -54,7 +54,8 @@ base::string16 ToolbarModelImpl::GetFormattedURL(size_t* prefix_end) const {
    const base::string16 formatted_text =
-       AutocompleteInput::FormattedStringWithEquivalentMeaning(
+       delegate_->FormattedStringWithEquivalentMeaning(
            url, url_formatter::FormatUrl(
 -                   url, languages, url_formatter::kFormatUrlOmitAll,
 +                   url, languages, (url_formatter::kFormatUrlOmitAll &
 +                                    ~url_formatter::kFormatUrlOmitHTTP),
-                    net::UnescapeRule::NORMAL, nullptr, prefix_end, nullptr),
-           ChromeAutocompleteSchemeClassifier(profile));
-   if (formatted_text.length() <= content::kMaxURLDisplayChars)
+                    net::UnescapeRule::NORMAL, nullptr, prefix_end, nullptr));
+   if (formatted_text.length() <= max_url_display_chars_)
+     return formatted_text;
 diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
 index d5e10f5b..fc590a1 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
