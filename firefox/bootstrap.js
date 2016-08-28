@@ -3,6 +3,7 @@
  */
 /* globals Components, APP_SHUTDOWN, console */
 
+/* jshint esversion:6 */
 /* exported startup, install, shutdown, uninstall */
 'use strict';
 
@@ -38,6 +39,9 @@ const patchTabBrowserWindow = isFennec ? patchFennecWindow : patchFirefoxWindow;
  *   http. Otherwise the original url is returned.
  */
 function maybeFixupURL(url) {
+  if (!isEnabled) {
+    return url;
+  }
   url = url.trim().replace(/[\r\n]/g, '');
   if (/^[a-z][a-z0-9+\-.]*:/i.test(url)) {
     // The URL already has a scheme. Don't call fixup.
@@ -92,13 +96,32 @@ function patchFirefoxWindow(window) {
 
   // Monkey-patch openLinkIn.
   // This method is implemented in browser/base/content/utilityOverlay.js.
-  window.openLinkIn = function openLinkIn_withHttpsFixup(url, where, params) {
+  /* jshint validthis:true */
+  function openLinkIn_withHttpsFixup(url, where, params) {
     if (isEnabled && params && params.allowThirdPartyFixup) {
       arguments[0] = maybeFixupURL(url);
     }
     return openLinkIn.apply(this, arguments);
+  }
+  openLinkIn_withHttpsFixup[ADDON_SESSION_TAG] = openLinkIn;
+
+  // There are crazy addons who try to monkey-patch by serializing functions...
+  // See https://github.com/Rob--W/https-by-default/issues/7.
+  // Let's return the original serialization plus a very conservative line that
+  // attempts to use the method exported below. The line is not expected to
+  // fail, but just in case another addon does something even crazier, wrap it
+  // in a try-catch.
+  openLinkIn_withHttpsFixup.toString = function() {
+    var signature = /\(url,\s*where,\s*params\)\s*\{/;
+    return openLinkIn.toString().replace(signature,
+        '$&\ntry{if(params&&params.allowThirdPartyFixup)' +
+          'url=window._https_by_default_maybeFixupURL(url);}catch(e){}\n');
   };
-  window.openLinkIn[ADDON_SESSION_TAG] = openLinkIn;
+  Object.defineProperty(window, '_https_by_default_maybeFixupURL', {
+    configurable: true,
+    value: maybeFixupURL,
+  });
+  window.openLinkIn = openLinkIn_withHttpsFixup;
 }
 
 /**
@@ -224,6 +247,7 @@ function shutdown(data, reason) {
       let openLinkIn = window.openLinkIn;
       if (openLinkIn && openLinkIn[ADDON_SESSION_TAG]) {
         window.openLinkIn = openLinkIn[ADDON_SESSION_TAG];
+        delete window._https_by_default_maybeFixupURL;
       }
     }
   });
