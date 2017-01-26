@@ -17,8 +17,8 @@ index d5e10f5b..fc590a1 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
 +++ b/components/omnibox/browser/autocomplete_input.cc
 @@ -288,6 +288,18 @@ metrics::OmniboxInputType::Type AutocompleteInput::Parse(
-   if (!canonicalized_url->has_host())
-     return metrics::OmniboxInputType::QUERY;
+   // between an HTTP URL and a query, or the scheme is HTTP or HTTPS, in which
+   // case we should reject invalid formulations.
 
 +  if (!parts->scheme.is_nonempty() &&
 +      base::LowerCaseEqualsASCII(parsed_scheme_utf8, url::kHttpScheme)) {
