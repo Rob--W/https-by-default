@@ -6,8 +6,8 @@ index 0cefbc6b..2865d67 100644
    const base::string16 formatted_text =
        delegate_->FormattedStringWithEquivalentMeaning(
            url, url_formatter::FormatUrl(
--                   url, url_formatter::kFormatUrlOmitAll,
-+                   url, (url_formatter::kFormatUrlOmitAll &
+-                   url, url_formatter::kFormatUrlOmitDefaults,
++                   url, (url_formatter::kFormatUrlOmitDefaults &
 +                         ~url_formatter::kFormatUrlOmitHTTP),
                     net::UnescapeRule::NORMAL, nullptr, prefix_end, nullptr));
    if (formatted_text.length() <= max_url_display_chars_)
