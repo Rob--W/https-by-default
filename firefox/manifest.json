@@ -15,6 +15,7 @@
     ],
     "applications": {
         "gecko": {
+            "strict_min_version": "57.0a1",
             "id": "https-by-default@robwu.nl"
         }
     }
