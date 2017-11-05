@@ -1,6 +1,6 @@
-FFFILES  = install.rdf
+FFFILES  = manifest.json
 FFFILES += icon.png
-FFFILES += bootstrap.js
+FFFILES += background.js
 
 firefox/https-by-default.xpi: $(addprefix firefox/,$(FFFILES))
 	cd firefox && zip https-by-default.xpi $(FFFILES)

@@ -1,0 +1,21 @@
+{
+    "name": "HTTPS by default",
+    "description": "Request websites over secure https by default from the location bar instead of insecure http.",
+    "version": "0.4",
+    "manifest_version": 2,
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "permissions": [
+        "tabs",
+        "webNavigation",
+        "webRequest",
+        "webRequestBlocking",
+        "*://*/*"
+    ],
+    "applications": {
+        "gecko": {
+            "id": "https-by-default@robwu.nl"
+        }
+    }
+}
