@@ -90,6 +90,12 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
         return;
     }
 
+    if (currentTab && currentTab.url === requestedUrl) {
+        // In Firefox, tab.url shows the URL of the currently loaded resource in
+        // a tab, so if the URL is equal to the requested URL, it is a page reload.
+        return;
+    }
+
     // Replace "http:" with "https:".
     let httpsUrl = requestedUrl.replace(':', 's:');
 
