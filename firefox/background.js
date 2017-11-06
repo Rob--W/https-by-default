@@ -15,10 +15,28 @@ var prefsReadyPromise = browser.storage.local.get({
 .then(({domains_nohttps}) => doParsePrefs(domains_nohttps), (() => {}))
 .then(() => { prefsReady = true; });
 
-
 browser.storage.onChanged.addListener((changes) => {
     if (changes.domains_nohttps) {
         doParsePrefs(changes.domains_nohttps.newValue);
+    }
+});
+
+
+var tabCreationTimes = new Map();
+
+browser.tabs.onCreated.addListener(tab => {
+    if (tab.id) {
+        tabCreationTimes.set(tab.id, Date.now());
+    }
+});
+browser.tabs.onRemoved.addListener(tabId => {
+    tabCreationTimes.delete(tabId);
+});
+browser.tabs.query({}).then(tabs => {
+    for (let tab of tabs) {
+        // Use a timestamp in the far past if the tabs already exist when the
+        // extension is loaded.
+        tabCreationTimes.set(tab.id, 0);
     }
 });
 
@@ -29,6 +47,7 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
     }
 
     // Possibly a navigation from the awesomebar, bookmark, etc.
+    // ... or a reload of a (discarded) tab.
 
     // I would like to only rewrite typed URLs without explicit scheme,
     // but unfortunately the extension API does not offer the typed text,
@@ -45,27 +64,36 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
         return;
     }
 
-    let currentUrl;
-    let tabPromise = browser.tabs.get(tabId);
-    try {
-        currentUrl = (await browser.webNavigation.getFrame({
-            tabId,
-            frameId: 0,
-        })).url;
-    } catch (e) {
-        // Current tab has no valid page (e.g. SSL connection error).
+    let currentTab;
+    for (let start = Date.now(); Date.now() - start < 200; ) {
         try {
-            currentUrl = (await tabPromise).url;
+            currentTab = await browser.tabs.get(tabId);
         } catch (e) {
-            // Tab does not exist. E.g. when a URL is loaded in a new tab page.
-            currentUrl = '';
+            // Tab does not exist. E.g. when a URL is loaded in a new tab page
+            // and the request happens before the tab exists.
+            await new Promise(resolve => { setTimeout(resolve, 20); });
         }
+    }
+
+    // Heuristic: On Firefox for Android, tabs can be discarded (and its URL
+    // becomes "about:blank"). When a tab is re-activated, the original URL is
+    // loaded again. These URLs should not be modified by us.
+    if (currentTab && currentTab.url === 'about:blank' &&
+        // Typing a site takes time, so it is reasonable to choose a relatively
+        // long time threshold. One second is a very realistic underbound for
+        // typing some domain name. It is also large enough to allow the browser
+        // to process the request, even if the device is very slow (CPU-wise).
+        details.timeStamp - currentTab.lastAccessed < 1000 &&
+        // If the tab is created around the same time as the request, then this
+        // is possibly an Alt-Enter navigation on Firefox Desktop.
+        Math.abs(details.timeStamp - tabCreationTimes.get(tabId)) > 300) {
+        return;
     }
 
     // Replace "http:" with "https:".
     let httpsUrl = requestedUrl.replace(':', 's:');
 
-    if (currentUrl === httpsUrl) {
+    if (currentTab && currentTab.url === httpsUrl) {
         // Don't rewrite if the current page's URL is identical to the target URL.
         // This is for the following scenario:
         // - User opens http://xxx
