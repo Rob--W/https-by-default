@@ -1,18 +1,22 @@
 {
     "name": "HTTPS by default",
-    "description": "Request websites over secure https by default from the location bar instead of insecure http.",
+    "description": "Request websites over secure https by default from the location bar instead of insecure http. Exceptions can be added at the add-on's preferences page (to not use HTTPS by default for some sites).",
     "version": "0.4",
     "manifest_version": 2,
     "background": {
         "scripts": ["background.js"]
     },
     "permissions": [
+        "storage",
         "tabs",
         "webNavigation",
         "webRequest",
         "webRequestBlocking",
         "*://*/*"
     ],
+    "options_ui": {
+        "page": "options.html"
+    },
     "applications": {
         "gecko": {
             "strict_min_version": "57.0a1",

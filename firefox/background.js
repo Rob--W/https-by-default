@@ -3,6 +3,25 @@
  */
 'use strict';
 
+const DOMAIN_WILDCARD_LEAF_SYMBOL = Symbol('Domain wildcard prefix');
+
+var prefsParsed = {
+    domains_nohttps: new Map(),
+};
+var prefsReady = false;
+var prefsReadyPromise = browser.storage.local.get({
+    domains_nohttps: '',
+})
+.then(({domains_nohttps}) => doParsePrefs(domains_nohttps), (() => {}))
+.then(() => { prefsReady = true; });
+
+
+browser.storage.onChanged.addListener((changes) => {
+    if (changes.domains_nohttps) {
+        doParsePrefs(changes.domains_nohttps.newValue);
+    }
+});
+
 browser.webRequest.onBeforeRequest.addListener(async (details) => {
     if (details.originUrl) {
         // Likely a web-triggered navigation, or a reload of such a page.
@@ -17,6 +36,10 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
     // including bookmarks, auto-completed URLs and full URLs with "http:" prefix.
 
     let {tabId, url: requestedUrl} = details;
+
+    if (!prefsReady) {
+        await prefsReadyPromise;
+    }
 
     if (!shouldRedirectToHttps(requestedUrl)) {
         return;
@@ -91,6 +114,37 @@ function shouldRedirectToHttps(requestedUrl) {
         return false;
     }
 
+    let map = prefsParsed.domains_nohttps;
+    for (let part of hostname.split('.').reverse()) {
+        map = map.get(part);
+        if (!map) {
+            break;
+        }
+        if (map.has(DOMAIN_WILDCARD_LEAF_SYMBOL)) {
+            return false;
+        }
+    }
+
     // By default, redirect to https:.
     return true;
+}
+
+function doParsePrefs(domains_nohttps) {
+    prefsParsed.domains_nohttps = new Map();
+    if (domains_nohttps) {
+        console.assert(typeof domains_nohttps === 'string');
+        for (let domain of domains_nohttps.split(/\s+/)) {
+            if (!domain) {
+                continue;
+            }
+            let map = prefsParsed.domains_nohttps;
+            for (let part of domain.split('.').reverse()) {
+                if (!map.has(part)) {
+                    map.set(part, new Map());
+                }
+                map = map.get(part);
+            }
+            map.set(DOMAIN_WILDCARD_LEAF_SYMBOL);
+        }
+    }
 }

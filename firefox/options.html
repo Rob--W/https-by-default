@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+}
+#domains_without_https {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 9em;
+}
+</style>
+</head>
+<body>
+HTTPS is enabled by default for all navigations from the location bar and bookmarks.
+If a site does not support https, you can opt in to using http by default for that site by adding the domain to the following list.
+When https by default is turned off for a domain, its subdomains will also not use https by default.
+<textarea id="domains_nohttps_input"></textarea>
+<input id="save_button" type="button" value="Save">
+<script src="options.js"></script>
+</body>
