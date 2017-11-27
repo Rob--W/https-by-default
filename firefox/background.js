@@ -34,15 +34,24 @@ browser.tabs.onRemoved.addListener(tabId => {
 });
 browser.tabs.query({}).then(tabs => {
     for (let tab of tabs) {
-        // Use a timestamp in the far past if the tabs already exist when the
-        // extension is loaded.
-        tabCreationTimes.set(tab.id, 0);
+        // If the extension is loading around Firefox's start-up, then we
+        // should not rewrite URLs.
+        // If the extension was loaded long after Firefox's start-up, then
+        // these timestamps are probably in the past (or the tab is not
+        // an about:blank page), and we will not inadvertently stop the
+        // redirect from happening.
+        tabCreationTimes.set(tab.id, tab.lastAccessed || Date.now());
     }
 });
 
 browser.webRequest.onBeforeRequest.addListener(async (details) => {
     if (details.originUrl) {
         // Likely a web-triggered navigation, or a reload of such a page.
+        return;
+    }
+
+    if (details.tabId === -1) {
+        // Invisible navigation. Unlikely to be requested by the user.
         return;
     }
 
@@ -78,15 +87,21 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
     // Heuristic: On Firefox for Android, tabs can be discarded (and its URL
     // becomes "about:blank"). When a tab is re-activated, the original URL is
     // loaded again. These URLs should not be modified by us.
-    if (currentTab && currentTab.url === 'about:blank' &&
+    // On Firefox for Desktop, this can also be a new tab of unknown origin.
+    if (currentTab && currentTab.url === 'about:blank' && (
         // Typing a site takes time, so it is reasonable to choose a relatively
         // long time threshold. One second is a very realistic underbound for
         // typing some domain name. It is also large enough to allow the browser
         // to process the request, even if the device is very slow (CPU-wise).
-        details.timeStamp - currentTab.lastAccessed < 1000 &&
+        details.timeStamp - currentTab.lastAccessed < 1000 ||
         // If the tab is created around the same time as the request, then this
         // is possibly an Alt-Enter navigation on Firefox Desktop.
-        Math.abs(details.timeStamp - tabCreationTimes.get(tabId)) > 300) {
+        // But it can also be a bookmark opened in a new tab, an
+        // extension-created tab (#15) or a URL opened via the command line (#14).
+        // The latter cases are probably more common, so we don't redirect for
+        // these.
+        tabCreationTimes.get(tabId) === undefined ||
+        details.timeStamp - tabCreationTimes.get(tabId) < 300)) {
         return;
     }
 
