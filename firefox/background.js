@@ -23,14 +23,22 @@ browser.storage.onChanged.addListener((changes) => {
 
 
 var tabCreationTimes = new Map();
+var tabActivatedTimes = new Map();
 
 browser.tabs.onCreated.addListener(tab => {
     if (tab.id) {
         tabCreationTimes.set(tab.id, Date.now());
+        if (tab.active) {
+            tabActivatedTimes.set(tab.id, Date.now());
+        }
     }
+});
+browser.tabs.onActivated.addListener(({tabId}) => {
+    tabActivatedTimes.set(tabId, Date.now());
 });
 browser.tabs.onRemoved.addListener(tabId => {
     tabCreationTimes.delete(tabId);
+    tabActivatedTimes.delete(tabId);
 });
 browser.tabs.query({}).then(tabs => {
     for (let tab of tabs) {
@@ -41,6 +49,7 @@ browser.tabs.query({}).then(tabs => {
         // an about:blank page), and we will not inadvertently stop the
         // redirect from happening.
         tabCreationTimes.set(tab.id, tab.lastAccessed || Date.now());
+        tabActivatedTimes.set(tab.id, tab.active ? Date.now() : 0);
     }
 });
 
@@ -87,21 +96,36 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
     // becomes "about:blank"). When a tab is re-activated, the original URL is
     // loaded again. These URLs should not be modified by us.
     // On Firefox for Desktop, this can also be a new tab of unknown origin.
-    if (currentTab && currentTab.url === 'about:blank' && (
+    if (currentTab && currentTab.url === 'about:blank') {
+        let tabCreationTime = tabCreationTimes.get(tabId);
+        if (tabCreationTime === undefined) {
+            // The request was generated before the tab was created,
+            // or the tab has been removed.
+            return;
+        }
+        let tabActivatedTime = tabActivatedTimes.get(tabId);
+        if (tabId === undefined) {
+            // If the time of when the tab was first activated is unknown,
+            // fall back to the time of when the time was last activated.
+            tabActivatedTime = currentTab.lastAccessed;
+        }
         // Typing a site takes time, so it is reasonable to choose a relatively
         // long time threshold. One second is a very realistic underbound for
         // typing some domain name. It is also large enough to allow the browser
         // to process the request, even if the device is very slow (CPU-wise).
-        details.timeStamp - currentTab.lastAccessed < 1000 ||
+        if (details.timeStamp - tabActivatedTime < 1000) {
+            // Likely resuming from a discarded tab on Android.
+            return;
+        }
         // If the tab is created around the same time as the request, then this
         // is possibly an Alt-Enter navigation on Firefox Desktop.
         // But it can also be a bookmark opened in a new tab, an
         // extension-created tab (#15) or a URL opened via the command line (#14).
         // The latter cases are probably more common, so we don't redirect for
         // these.
-        tabCreationTimes.get(tabId) === undefined ||
-        details.timeStamp - tabCreationTimes.get(tabId) < 300)) {
-        return;
+        if (details.timeStamp - tabCreationTimes.get(tabId) < 300) {
+            return;
+        }
     }
 
     if (currentTab && isDerivedURL(currentTab.url, requestedUrl)) {
