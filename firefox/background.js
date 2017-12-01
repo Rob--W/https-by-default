@@ -49,7 +49,6 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
         // Likely a web-triggered navigation, or a reload of such a page.
         return;
     }
-
     if (details.tabId === -1) {
         // Invisible navigation. Unlikely to be requested by the user.
         return;
@@ -105,25 +104,14 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
         return;
     }
 
-    if (currentTab && currentTab.url === requestedUrl) {
-        // In Firefox, tab.url shows the URL of the currently loaded resource in
-        // a tab, so if the URL is equal to the requested URL, it is a page reload.
+    if (currentTab && isDerivedURL(currentTab.url, requestedUrl)) {
+        // User had likely edited the current URL and pressed Enter.
+        // Do not rewrite the request to HTTPS.
         return;
     }
 
     // Replace "http:" with "https:".
     let httpsUrl = requestedUrl.replace(':', 's:');
-
-    if (currentTab && currentTab.url === httpsUrl) {
-        // Don't rewrite if the current page's URL is identical to the target URL.
-        // This is for the following scenario:
-        // - User opens http://xxx
-        // - The extension redirects to https://xxx
-        // - ... but https://xxx is not serving the content that the user expects
-        // - User opens http://xxx again
-        // - Extension should not redirect to https.
-        return;
-    }
 
     return {
         redirectUrl: httpsUrl,
@@ -176,6 +164,67 @@ function shouldRedirectToHttps(requestedUrl) {
 
     // By default, redirect to https:.
     return true;
+}
+
+/**
+ * Determines whether the requested URL is based on the current URL.
+ *
+ * @param {string} currentUrl - The current URL of the tab.
+ * @param {string} requestedUrl - The requested http:-URL.
+ * @returns {boolean} Whether to avoid rewriting the request to https.
+ */
+function isDerivedURL(currentUrl, requestedUrl) {
+    if (currentUrl === requestedUrl) {
+        // In Firefox, tab.url shows the URL of the currently loaded resource in
+        // a tab, so if the URLs are equal, it is a page reload.
+        return true;
+    }
+    if (!currentUrl.startsWith('http')) {
+        // Not a http(s) URL, e.g. about:.
+        return false;
+    }
+    let cur;
+    try {
+        cur = new URL(currentUrl);
+    } catch (e) {
+        return false;
+    }
+    let req = new URL(requestedUrl);
+    if (req.hostname === cur.hostname) {
+        // The user had already accessed the domain over HTTP, so there is no
+        // much gain in forcing a redirect to HTTPS.
+        //
+        // This supports the use case of editing the current (HTTP) URL and
+        // then navigating to it.
+        //
+        // This also covers the following scenario:
+        // - User opens http://xxx
+        // - The extension redirects to https://xxx
+        // - ...but https://xxx is not serving the content that the user expects
+        // - User opens http://xxx again
+        // - Extension should not redirect to https.
+        return true;
+    }
+
+    if (cur.protocol === 'https:') {
+        // If the current tab's URL is https, do not downgrade to http.
+        return false;
+    }
+
+    if ((req.pathname.length > 1 ||
+         req.search.length > 2 ||
+         req.hash.length > 2) &&
+        req.pathname === cur.pathname &&
+        req.search === cur.search &&
+        req.hash === cur.hash) {
+        // Everything after the domain name is non-empty and equal.
+        // The user might be trying to correct a misspelled domain name.
+        // Do not rewrite to HTTPS.
+        return true;
+    }
+
+    // Proceed to redirect to https.
+    return false;
 }
 
 function doParsePrefs(domains_nohttps) {
