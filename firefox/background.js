@@ -7,17 +7,25 @@ const DOMAIN_WILDCARD_LEAF_SYMBOL = Symbol('Domain wildcard prefix');
 
 var prefsParsed = {
     domains_nohttps: new Map(),
+    enable_logging: false,
 };
 var prefsReady = false;
 var prefsReadyPromise = browser.storage.local.get({
+    enable_logging: false,
     domains_nohttps: '',
 })
-.then(({domains_nohttps}) => doParsePrefs(domains_nohttps), (() => {}))
+.then(({domains_nohttps, enable_logging}) => {
+    doParsePrefs(domains_nohttps);
+    prefsParsed.enable_logging = enable_logging;
+}, (() => {}))
 .then(() => { prefsReady = true; });
 
 browser.storage.onChanged.addListener((changes) => {
     if (changes.domains_nohttps) {
         doParsePrefs(changes.domains_nohttps.newValue);
+    }
+    if (changes.enable_logging) {
+        prefsParsed.enable_logging = changes.enable_logging.newValue;
     }
 });
 
@@ -136,6 +144,10 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
 
     // Replace "http:" with "https:".
     let httpsUrl = requestedUrl.replace(':', 's:');
+
+    if (prefsParsed.enable_logging) {
+        console.log('[HTTPS by default] Redirecting ' + requestedUrl);
+    }
 
     return {
         redirectUrl: httpsUrl,

@@ -21,5 +21,9 @@ If a site does not support https, you can opt in to using http by default for th
 When https by default is turned off for a domain, its subdomains will also not use https by default.
 <textarea id="domains_nohttps_input"></textarea>
 <input id="save_button" type="button" value="Save">
+<label>
+    <input type="checkbox" id="enable_logging_input">
+    Enable logging (print http-to-https redirections to the console).
+</label>
 <script src="options.js"></script>
 </body>
