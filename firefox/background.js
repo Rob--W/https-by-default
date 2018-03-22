@@ -32,6 +32,7 @@ browser.storage.onChanged.addListener((changes) => {
 
 var tabCreationTimes = new Map();
 var tabActivatedTimes = new Map();
+var tabPendingRedirectInfos = new Map();
 
 browser.tabs.onCreated.addListener(tab => {
     if (tab.id) {
@@ -47,6 +48,7 @@ browser.tabs.onActivated.addListener(({tabId}) => {
 browser.tabs.onRemoved.addListener(tabId => {
     tabCreationTimes.delete(tabId);
     tabActivatedTimes.delete(tabId);
+    unregisterRedirectInfo(tabId);
 });
 browser.tabs.query({}).then(tabs => {
     for (let tab of tabs) {
@@ -140,6 +142,18 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
         // User had likely edited the current URL and pressed Enter.
         // Do not rewrite the request to HTTPS.
         return;
+    }
+
+    if (tabCreationTimes.has(tabId)) {
+        var pendingRedirectInfo = tabPendingRedirectInfos.get(tabId);
+        if (pendingRedirectInfo && pendingRedirectInfo.url === requestedUrl &&
+            currentTab && currentTab.status === 'loading') {
+            // The previous HTTP->HTTPS navigation hasn't started, and the HTTP navigation is
+            // attempted again. This site does probably not support HTTPS, and the user is trying
+            // to force navigation to HTTP.
+            return;
+        }
+        registerRedirectInfo(tabId, requestedUrl);
     }
 
     // Replace "http:" with "https:".
@@ -261,6 +275,52 @@ function isDerivedURL(currentUrl, requestedUrl) {
 
     // Proceed to redirect to https.
     return false;
+}
+
+// Records the intercepted request that is going to be redirected to HTTPS.
+// The redirection URL will be discarded when a response is received for the main frame in the
+// given tab, when the tab is removed, or when the request fails.
+//
+// The caller should make sure that tabId refers to a valid tab.
+function registerRedirectInfo(tabId, requestedUrl) {
+    function unregister() {
+        browser.webRequest.onHeadersReceived.removeListener(unregister);
+        browser.webRequest.onErrorOccurred.removeListener(unregister);
+        tabPendingRedirectInfos.delete(tabId);
+    }
+
+    unregisterRedirectInfo(tabId);
+
+    // A request was successfully received for the main frame, so clear the registered redirection
+    // URL. This is not necessarily a response for |requestedUrl|, any response will do.
+    browser.webRequest.onHeadersReceived.addListener(unregister, {
+        urls: ['*://*/*'],
+        types: ['main_frame'],
+        tabId,
+    });
+
+    // The server is not reachable via HTTPs, and the URL can be unregistered because
+    // tab.url will show the URL of the attempted navigation:
+    browser.webRequest.onErrorOccurred.addListener(unregister, {
+        urls: [requestedUrl],
+        types: ['main_frame'],
+        tabId,
+    });
+
+    // Expose the unregister function so that if somehow neither of the above events happen,
+    // that the listener is removed when the tab is removed (via tabs.onRemoved):
+    tabPendingRedirectInfos.set(tabId, {
+        url: requestedUrl,
+        unregister,
+    });
+}
+
+function unregisterRedirectInfo(tabId) {
+    let pendingRedirectInfo = tabPendingRedirectInfos.get(tabId);
+    if (pendingRedirectInfo) {
+        pendingRedirectInfo.unregister();
+        tabPendingRedirectInfos.delete(tabId);
+    }
 }
 
 function doParsePrefs(domains_nohttps) {
