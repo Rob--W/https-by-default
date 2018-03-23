@@ -81,7 +81,7 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
     // so we will rewrite any non-web-initiated navigation,
     // including bookmarks, auto-completed URLs and full URLs with "http:" prefix.
 
-    let {tabId, url: requestedUrl} = details;
+    let {tabId, url: requestedUrl, requestedId} = details;
 
     if (!prefsReady) {
         await prefsReadyPromise;
@@ -146,6 +146,11 @@ browser.webRequest.onBeforeRequest.addListener(async (details) => {
 
     if (tabCreationTimes.has(tabId)) {
         var pendingRedirectInfo = tabPendingRedirectInfos.get(tabId);
+        if (pendingRedirectInfo && pendingRedirectInfo.redirectedRequestId === requestedId) {
+            // Don't rewrite redirects. Redirects are triggered by a server response, and
+            // are certainly not the result of a manually typed URL.
+            return;
+        }
         if (pendingRedirectInfo && pendingRedirectInfo.url === requestedUrl &&
             currentTab && currentTab.status === 'loading') {
             // The previous HTTP->HTTPS navigation hasn't started, and the HTTP navigation is
@@ -283,21 +288,54 @@ function isDerivedURL(currentUrl, requestedUrl) {
 //
 // The caller should make sure that tabId refers to a valid tab.
 function registerRedirectInfo(tabId, requestedUrl) {
+    let redirectInfo = {
+        url: requestedUrl,
+        redirectedRequestId: null,
+        unregister,
+    };
     function unregister() {
-        browser.webRequest.onHeadersReceived.removeListener(unregister);
+        browser.webRequest.onHeadersReceived.removeListener(onHeadersReceived);
+        browser.webRequest.onResponseStarted.removeListener(unregister);
         browser.webRequest.onErrorOccurred.removeListener(unregister);
         tabPendingRedirectInfos.delete(tabId);
+    }
+
+    function onHeadersReceived({requestedId, statusCode}) {
+        if (statusCode !== 301 && statusCode !== 302 && statusCode !== 303 &&
+            statusCode !== 307 && statusCode !== 308) {
+            unregister();
+            return;
+        }
+        if (tabPendingRedirectInfos.get(tabId) !== redirectInfo) {
+            // unregister() has been invoked between the queued webRequest event and the
+            // actual dispatch. This is not expected to happen, but can happen in theory.
+            // Exit now to avoid registering and leaking a webRequest event handler.
+            return;
+        }
+
+        // When a request is restarted, the requestedId is preserved.
+        redirectInfo.redirectedRequestId = requestedId;
+
+        // If the response did not have a valid Location header, the request won't be restarted.
+        // Detect the successful response body via webRequest.onResponseStarted.
+        // The onHeadersReceived event can fire multiple times throughout a request, but it is safe
+        // to call addListener because the event handler won't be registered twice.
+        browser.webRequest.onResponseStarted.addListener(unregister, {
+            urls: ['*://*/*'],
+            types: ['main_frame'],
+            tabId,
+        });
     }
 
     unregisterRedirectInfo(tabId);
 
     // A request was successfully received for the main frame, so clear the registered redirection
     // URL. This is not necessarily a response for |requestedUrl|, any response will do.
-    browser.webRequest.onHeadersReceived.addListener(unregister, {
+    browser.webRequest.onHeadersReceived.addListener(onHeadersReceived, {
         urls: ['*://*/*'],
         types: ['main_frame'],
         tabId,
-    });
+    }, ['blocking']);
 
     // The server is not reachable via HTTPs, and the URL can be unregistered because
     // tab.url will show the URL of the attempted navigation:
@@ -309,10 +347,7 @@ function registerRedirectInfo(tabId, requestedUrl) {
 
     // Expose the unregister function so that if somehow neither of the above events happen,
     // that the listener is removed when the tab is removed (via tabs.onRemoved):
-    tabPendingRedirectInfos.set(tabId, {
-        url: requestedUrl,
-        unregister,
-    });
+    tabPendingRedirectInfos.set(tabId, redirectInfo);
 }
 
 function unregisterRedirectInfo(tabId) {
