@@ -1,18 +1,18 @@
-diff --git a/components/toolbar/toolbar_model_impl.cc b/components/toolbar/toolbar_model_impl.cc
+diff --git a/components/omnibox/browser/location_bar_model_impl.cc b/components/omnibox/browser/location_bar_model_impl.cc
 index 689f02345fd8..9539bd697e0c 100644
---- a/components/toolbar/toolbar_model_impl.cc
-+++ b/components/toolbar/toolbar_model_impl.cc
-@@ -39,7 +39,9 @@ ToolbarModelImpl::~ToolbarModelImpl() {
+--- a/components/omnibox/browser/location_bar_model_impl.cc
++++ b/components/omnibox/browser/location_bar_model_impl.cc
+@@ -39,7 +44,9 @@ LocationBarModelImpl::~LocationBarModelImpl() {
  
- // ToolbarModelImpl Implementation.
- base::string16 ToolbarModelImpl::GetFormattedFullURL() const {
+ // LocationBarModelImpl Implementation.
+ base::string16 LocationBarModelImpl::GetFormattedFullURL() const {
 -  return GetFormattedURL(url_formatter::kFormatUrlOmitDefaults);
 +  return GetFormattedURL(
 +      url_formatter::kFormatUrlOmitDefaults &
 +      ~url_formatter::kFormatUrlOmitHTTP);
  }
  
- base::string16 ToolbarModelImpl::GetURLForDisplay() const {
+ base::string16 LocationBarModelImpl::GetURLForDisplay() const {
 diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
 index 43fc0dc783d8..1f7e5ce9dee1 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
