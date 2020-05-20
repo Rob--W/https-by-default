@@ -17,9 +17,9 @@ index 689f02345fd8..9539bd697e0c 100644
 -      url_formatter::kFormatUrlOmitDefaults;
 +      url_formatter::kFormatUrlOmitDefaults &
 +      ~url_formatter::kFormatUrlOmitHTTP;
- 
-   // Early exit to prevent elision of URLs when relevant extension is enabled.
-   if (delegate_->ShouldPreventElision()) {
+   if (delegate_->ShouldTrimDisplayUrlAfterHostName()) {
+     format_types |= url_formatter::kFormatUrlTrimAfterHost;
+   }
 diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnibox/browser/autocomplete_input.cc
 index 43fc0dc783d8..1f7e5ce9dee1 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
