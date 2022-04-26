@@ -24,7 +24,7 @@ diff --git a/components/omnibox/browser/autocomplete_input.cc b/components/omnib
 index 43fc0dc783d8..1f7e5ce9dee1 100644
 --- a/components/omnibox/browser/autocomplete_input.cc
 +++ b/components/omnibox/browser/autocomplete_input.cc
-@@ -285,6 +285,18 @@ metrics::OmniboxInputType AutocompleteInput::Parse(
+@@ -285,6 +285,17 @@ metrics::OmniboxInputType AutocompleteInput::Parse(
    // between an HTTP URL and a query, or the scheme is HTTP or HTTPS, in which
    // case we should reject invalid formulations.
  
@@ -34,9 +34,8 @@ index 43fc0dc783d8..1f7e5ce9dee1 100644
 +    // but we want to default to https instead.
 +    if (scheme)
 +      *scheme = base::ASCIIToUTF16(url::kHttpsScheme);
-+    url::Replacements<char> replacements;
-+    replacements.SetScheme(url::kHttpsScheme,
-+                           url::Component(0, strlen(url::kHttpsScheme)));
++    GURL::Replacements replacements;
++    replacements.SetSchemeStr(url::kHttpsScheme);
 +    *canonicalized_url = canonicalized_url->ReplaceComponents(replacements);
 +  }
 +
