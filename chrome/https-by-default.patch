@@ -29,7 +29,7 @@ index 43fc0dc783d8..1f7e5ce9dee1 100644
    // case we should reject invalid formulations.
  
 +  if (!parts->scheme.is_nonempty() &&
-+      base::LowerCaseEqualsASCII(parsed_scheme_utf8, url::kHttpScheme)) {
++      base::EqualsCaseInsensitiveASCII(parsed_scheme_utf8, url::kHttpScheme)) {
 +    // Scheme was not specified. url_fixer::FixupURL automatically adds http:,
 +    // but we want to default to https instead.
 +    if (scheme)
